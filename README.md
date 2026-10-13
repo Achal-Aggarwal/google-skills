@@ -49,6 +49,7 @@ If `npx` is not available in your environment, install
   - [**Agent Platform RAG Engine Management**](./skills/cloud/agent-platform-rag-engine-management)
   - [**Agent Platform Troubleshooting**](./skills/cloud/agent-platform-troubleshooting)
   - [**Agent Platform Tuning Management**](./skills/cloud/agent-platform-tuning-management)
+  - [**API Gateway Remote MCP Server (Public Preview)**](./skills/cloud/api-gateway-mcp-server)
   - [**BigQuery AI & ML**](./skills/cloud/bigquery-ai-ml)
   - [**Gemini API in Agent Platform**](./skills/cloud/gemini-api)
   - [**Gemini Enterprise Agent Platform - Managed Agents API Skill**](./skills/cloud/gemini-agents-api)

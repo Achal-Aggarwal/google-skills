@@ -128,6 +128,7 @@ If `npx` is not available in your environment, install
 - **Management tools**
   - [**Cloud Monitoring Chart Generation Skill (`cloud-monitoring-chart-generation`)**](./skills/cloud/cloud-monitoring-chart-generation)
   - [**Cloud Monitoring ListTimeSeries Request Generator**](./skills/cloud/cloud-monitoring-list-time-series-request)
+  - [**Cloud Monitoring Notification Channels Configuration**](./skills/cloud/cloud-monitoring-notification-channels-configuration)
   - [**Cloud Monitoring PromQL Generator**](./skills/cloud/cloud-monitoring-promql-query)
   - [**Cloud Trace Querying Skill (`cloud-trace-querying`)**](./skills/cloud/cloud-trace-querying)
   - [**Configuring Cloud Logging**](./skills/cloud/cloud-logging-configuration-basics)

@@ -1,7 +1,7 @@
 ---
 name: dbt-sf-to-bq-translator
 metadata:
-  version: "1.0.1"
+  version: "1.1.0"
   category: BigDataAndAnalytics
 description: >-
   Translates Snowflake dbt SQL models to Standardized BigQuery SQL. Handles SQL
@@ -59,15 +59,28 @@ Before starting the translation, ensure your Google Cloud environment is properl
   Execute the deterministic end-to-end migration using the bundled translation script `scripts/bulk_translate_via_gcloud.py`:
   ```bash
   python3 scripts/bulk_translate_via_gcloud.py \
-    --input <input_dir> \
-    --output <output_dir> \
-    --bucket <gcs_bucket> \
-    --location <region> \
-    [--metadata <metadata_path>]
+    --input {input_dir} \
+    --output {output_dir} \
+    --bucket {gcs_bucket} \
+    --location {region} \
+    [--metadata {metadata_path}] \
+    [--array-cast-mode {array_cast_mode}] \
+    [--struct-columns {struct_columns}]
   ```
+
+  | Flag | Default | Description |
+  | :--- | :--- | :--- |
+  | `--input` | *(Required)* | Local directory containing source Snowflake dbt `.sql` and `.yml` files. |
+  | `--output` | *(Required)* | Target directory for translated BigQuery dbt `.sql` and `.yml` files. |
+  | `--bucket` | *(Required)* | GCS bucket name used to stage translation inputs and outputs. |
+  | `--location` | `us` | GCP region for BigQuery Translation Service execution (e.g., `us`, `eu`). |
+  | `--metadata` | `None` | Optional path to a directory or `.zip` archive containing source `tables.csv` and `columns.csv`. |
+  | `--array-cast-mode` | `array_string` | Target conversion for BQMS `ARRAY<JSON>` casts. Use `array_string` (`ARRAY<STRING>`) by default; use `string` (`STRING`), `json_extract_string_array`, or `preserve` as escape hatches when required by the source table schema. |
+  | `--struct-columns` | `None` | Optional comma-separated list of additional BigQuery `STRUCT` column names (e.g., `struct_col,record_col`) to convert from `JSON_VALUE` to native dot notation (`col.field`). |
+
   The migration tools bundled in `scripts/` perform the following coordinated actions:
   - `scripts/bulk_translate_via_gcloud.py`: Orchestrates end-to-end bulk migration, automating pre-processing, GCS upload, BigQuery Translation Service invocation, download, post-processing, and YAML configuration copying.
-  - `scripts/dbt_translator.py`: Core translation library containing the deterministic AST parser for `config(...)`, Jinja placeholder masking and restoration, JSON extraction sanitization, macro auditing, casing/join standardization, and copyright header enforcement.
+  - `scripts/dbt_translator.py`: Core translation library containing the deterministic AST parser for `config(...)`, Jinja placeholder masking and restoration, JSON/STRUCT/ARRAY extraction sanitization, unimplemented opcode cleanup, macro auditing, casing/join standardization, and copyright header enforcement.
 
 - **Detailed Translation Lifecycle (Executed by Scripts)**:
   1.  **Compile to Standard SQL using Placeholders (Pre-Translation)**:
@@ -75,7 +88,7 @@ Before starting the translation, ensure your Google Cloud environment is properl
       - Replace dbt macro calls with standard-SQL-compliant placeholder identifiers to prevent BigQuery Translation Service from throwing syntax errors:
         * Replace `{{ source('src_name', 'table_name') }}` with `_DBT_SOURCE_src_name_DBTSEP_table_name_`
         * Replace `{{ ref('model_name') }}` with `_DBT_REF_model_name_`
-      - Eliminate Jinja curly braces (`{{ ... }}`) from the SQL prior to translation, ensuring the transpiler processes 100% valid Snowflake dialect SQL.
+      - Normalize Snowflake bracket notation (`col['prop']` -> `col:prop`), `::variant:field`, and Jinja `{% else %}` / loop `UNION ALL` branches, eliminating Jinja curly braces (`{{ ... }}`) prior to translation so the transpiler processes 100% valid Snowflake dialect SQL.
   2.  **Isolate the SQL Files**:
       - Save these pre-processed, Jinja-free files to a staging input directory ready for GCS upload.
   3.  **Pre-Process Metadata & Translate SQL via BigQuery Translation Service**:
@@ -89,10 +102,11 @@ Before starting the translation, ensure your Google Cloud environment is properl
         `gcloud storage cp gs://[YOUR_BUCKET]/migration_output/*.sql <translated_output_dir>/`
   4.  **Restore Placeholders & Re-Embed dbt Logic**:
       - Take the translated BigQuery SQL files and perform advanced post-processing:
-        * **AST-Based Config Transformation**: Parse the original `{{ config(...) }}` block, stripping Snowflake-specific parameters like `copy_grants`, `transient`, and `secure`. Sanitize hooks (`pre_hook` and `post_hook`) to remove invalid Snowflake commands like `ALTER ICEBERG TABLE ... REFRESH` or `UNSET SECURE`, while preserving valid ones.
+        * **AST-Based Config Transformation**: Parse the original `{{ config(...) }}` block, stripping Snowflake-specific parameters like `copy_grants`, `transient`, and `secure`. Sanitize hooks (`pre_hook` and `post_hook`) to remove invalid Snowflake commands like `ALTER ICEBERG TABLE ... REFRESH`, `UNSET SECURE`, or `COPY INTO`, while preserving valid ones.
         * **Reference Resolver (Namespace Resolution)**: Scan the SQL for hardcoded Snowflake database/schema table paths in FROM and JOIN clauses, and map them back to native dbt `{{ ref(...) }}` or `{{ source(...) }}` macros by resolving against discovered project models and sources.
         * **Macro & Syntax Audit**: Scan all `{{ ... }}` Jinja expressions and log warnings for any custom/non-allowlisted database-specific macros. Also audit these blocks for Snowflake-specific syntax (e.g. `::date`, `dateadd`, `to_date`) that may have been skipped or masked, listing warning comments directly in the file.
-        * **Balanced SQL Edge-Cases Sanitization**: Convert date cast suffixes (`::date` -> `CAST(... AS DATE)`), datetime cast suffixes (`::timestamp` -> `CAST(... AS TIMESTAMP)`), nested `dateadd(...)` calls, and intervals (`- interval '5 month'`) inside and outside control blocks using balanced-parentheses parsers.
+        * **Balanced SQL Edge-Cases Sanitization**: Convert date cast suffixes (`::date` -> `CAST(... AS DATE)`), datetime cast suffixes (`::timestamp` -> `CAST(... AS TIMESTAMP)`), float cast suffixes (`::float` -> `CAST(... AS FLOAT64)`), nested `dateadd(...)` calls, and intervals (`- interval '5 month'`) inside and outside control blocks using balanced-parentheses parsers. Fix displaced Jinja tags around CTEs and strip 16MB `substr(string(...), 1, 16777216)` wrappers.
+        * **Array Type & STRUCT Access Normalization**: Convert BQMS untyped `ARRAY<JSON>` casts to `ARRAY<STRING>` (or the configured `--array-cast-mode` target), convert `json_value` on `STRUCT` columns to direct dot notation (`col.field`) and on `ARRAY<STRUCT>` columns to `col[SAFE_OFFSET(idx)].field`, and clean `error_unimplemented` opcodes.
         * **Copyright Header Placement**: Prepend the mandatory Google copyright header at the very top of the file above the config block.
   5.  **Write to the New BigQuery dbt File & Copy YAML Configurations**:
       - Save the newly assembled, BigQuery-compatible files preserving directory structure. Also, copy all `.yml`/`.yaml` files from the input directory to the output directory.
@@ -111,25 +125,24 @@ Every translated file **MUST** start with the following exact header at the very
 # agreement with Google.
 ```
 
-### 2. Standardized JSON Extraction
-Never use Snowflake colon notation or BigQuery `JSON_VALUE`. Always use the following pattern:
-- **Rule**: `CAST(JSON_EXTRACT_SCALAR(json_column, '$.path') AS TYPE)`
-- **Mandatory Casting**:
-    - IDs (primary/foreign): `AS INT64` for all system IDs (do not use `NUMERIC` for IDs).
-    - Boolean Flags: `AS BOOL`
-    - Strings: `AS STRING` (do not wrap in `NULLIF` unless explicitly required to handle empty/null strings in source).
-    - Timestamps: `AS TIMESTAMP`
+### 2. Standardized JSON & Array Extraction
+Never use Snowflake colon notation (`:`) in BigQuery SQL because BigQuery Standard SQL does not recognize colon syntax for semi-structured field access and throws a syntax error. Translate semi-structured lookups using BigQuery's standard functions and consult [dbt_migration_patterns.md](references/dbt_migration_patterns.md) for detailed patterns and error remedies:
+- **Scalar & Stringified JSON Extraction**: Use `JSON_VALUE(json_col, '$.path')` for native `JSON` columns (omit dots before array indexes, e.g., `$.items[1]`), and `CAST(JSON_EXTRACT_SCALAR(SAFE.PARSE_JSON(CAST(source.col AS STRING)), '$.path') AS TYPE)` for stringified JSON columns. Wrap typed extractions in `SAFE_CAST(... AS INT64|BOOL|TIMESTAMP|NUMERIC)` when strict typing is required.
+- **Array Extraction, Exploding & Untyped Arrays (`::array`)**: Use `JSON_EXTRACT_STRING_ARRAY` or `JSON_EXTRACT_ARRAY` and explode with `CROSS JOIN UNNEST(...)`. Map BQMS `ARRAY<JSON>` casts from Snowflake `::array` to `ARRAY<STRING>` by default (or `STRING` / `JSON_EXTRACT_STRING_ARRAY` based on source schema; see Section 3 of [dbt_migration_patterns.md](references/dbt_migration_patterns.md)).
+- **JSON Timestamps (ISO-8601 with `'Z'`)**: Cast JSON timestamp extractions to `TIMESTAMP` (`CAST(JSON_EXTRACT_SCALAR(json_col, '$.updated_at') AS TIMESTAMP)`) because direct `CAST(... AS DATETIME)` fails at runtime on ISO-8601 strings ending in `'Z'`. If `DATETIME` is required downstream, cast via `TIMESTAMP` first (see Section 5 of [dbt_migration_patterns.md](references/dbt_migration_patterns.md)).
+- **BigQuery `STRUCT` & `ARRAY<STRUCT>` Columns**: Use direct dot notation (`col.field`, e.g., `source.struct_col.count`) for native `STRUCT` columns and `source.col[SAFE_OFFSET(0)].field` (or `JSON_VALUE(TO_JSON(source.col), '$[0].field')`) for `ARRAY<STRUCT>` columns, because `JSON_VALUE()` and `CAST(... AS JSON)` do not accept `STRUCT` types (see Section 6 of [dbt_migration_patterns.md](references/dbt_migration_patterns.md)).
+- **Snowflake Bracket Notation (`col['field']`) & `error_unimplemented`**: Normalize `col['field']` to `col:field` during pre-processing and replace any residual BQMS `error_unimplemented` or 16MB `substr(string(...), 1, 16777216)` wrappers with `col.field` (for `STRUCT` columns) or `JSON_VALUE(col, '$.field')` (for `JSON` columns; see Sections 7–8 of [dbt_migration_patterns.md](references/dbt_migration_patterns.md)).
 
 ### 3. Explicit Type Safety
-- **Comparisons**: Always use `CAST` on both sides of a join or filter if types are not identical. Use `AS STRING` for universal comparison safety if necessary.
+- **Comparisons**: Always use `SAFE_CAST` on both sides of a join or filter if types are not identical. Use `AS STRING` for universal comparison safety if necessary.
 - **ID Fields**: Prefer `INT64` for all system IDs (e.g., `ticket_id`, `user_id`).
 - **Null Handling**:
-    - For placeholder columns, always use explicit type casting: `CAST(NULL AS TYPE)`.
+    - For placeholder columns, always use explicit type casting: `SAFE_CAST(NULL AS TYPE)`.
 
 ### 4. Prescriptive String & Date Functions
 - **Truncation**: Use `LEFT(col, length)` or `SUBSTR(col, 1, length)`.
 - **Search**: Use `LOWER(col) LIKE '%pattern%'` instead of `REGEXP_CONTAINS`.
-- **Date Add**: Use `DATE_ADD(CAST(col AS DATETIME), INTERVAL num HOUR)`.
+- **Date Add**: Use `DATE_ADD(SAFE_CAST(col AS DATETIME), INTERVAL num HOUR)`.
 
 ### 5. Mandatory Deduplication & Joins
 - **Deduplication**: If the source model requires deduplication on a primary key:

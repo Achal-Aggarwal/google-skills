@@ -101,6 +101,7 @@ If `npx` is not available in your environment, install
   - [**Google Cloud global external Application Load Balancer Configuration Skill**](./skills/cloud/google-cloud-global-frontend-configuration)
   - [**Google Cloud Networking Observability Expert**](./skills/cloud/google-cloud-networking-observability)
   - [**Troubleshoot GKE TPU slice creation blocked by an unstable MIG**](./skills/cloud/gke-ai-troubleshooting-tpu-slice-mig-stuck-updating)
+  - [**Troubleshoot GKE TPU VMs stuck in Compute Engine repair (`REPAIRING`)**](./skills/cloud/gke-ai-troubleshooting-tpu-vm-repair-stuck)
   - [**Troubleshoot unresponsive GKE TPU and GPU nodes (`NodeStatusUnknown`)**](./skills/cloud/gke-ai-troubleshooting-node-unresponsive-timeout)
 - **Databases and analytics**
   - [**AlloyDB Basics**](./skills/cloud/alloydb-basics)

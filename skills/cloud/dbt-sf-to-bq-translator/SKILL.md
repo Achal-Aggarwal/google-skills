@@ -1,21 +1,21 @@
 ---
 name: dbt-sf-to-bq-translator
 metadata:
-  version: "1.1.0"
+  version: "1.1.1"
   category: BigDataAndAnalytics
 description: >-
   Translates Snowflake dbt SQL models to Standardized BigQuery SQL. Handles SQL
   compilation, Jinja macro placeholder masking, BigQuery Translation Service migration
   workflows, AST-based config transformations, explicit type casting, JSON extraction
   standardization, and deduplication. Use when migrating Snowflake dbt pipelines
-  or models to Google Cloud BigQuery. Don't use for generic BigQuery queries or
+  or models to BigQuery on Google Cloud. Don't use for generic BigQuery queries or
   non-Snowflake SQL migrations.
 ---
 
 # dbt Snowflake to BigQuery Translator
 
 You are responsible for:
-1.  **Dialect Translation**: Translating Snowflake dbt SQL models to Standardized Google BigQuery SQL.
+1.  **Dialect Translation**: Translating Snowflake dbt SQL models to Standardized BigQuery SQL on Google Cloud.
 2.  **Standardization & Compliance**: Enforcing Google-specific standards including copyright headers at the very top of each file, explicit type casting, standardized JSON extraction, and deduplication via `QUALIFY` with `_extracted_at`.
 3.  **Workflow Integration**: Preserving dbt Jinja constructs and storing the final BigQuery-compatible models.
 
@@ -30,7 +30,7 @@ Before starting the translation, ensure your Google Cloud environment is properl
     gcloud auth login
     gcloud auth application-default login
     ```
-3.  **Project Configuration**: Set your active GCP project:
+3.  **Project Configuration**: Set your active Google Cloud project:
     ```bash
     gcloud config set project {project_id}
     ```
@@ -50,8 +50,8 @@ Before starting the translation, ensure your Google Cloud environment is properl
   1. Migration Project Name (e.g. `my_migration_project`).
   2. Input directory containing Snowflake SQL files.
   3. Output directory where BigQuery SQL files should be saved.
-  4. GCS Bucket name for staging translation assets.
-  5. GCP Region (e.g. `us` or `eu`).
+  4. Cloud Storage bucket name for staging translation assets.
+  5. Google Cloud region (e.g. `us` or `eu`).
   6. (Optional) Local path to a directory or `.zip` file containing source database metadata (such as `columns.csv` or `tables.csv`).
   Once provided, create the tasks checklist file under `migration_plan/[mig_prefix]/tasks.md` with unchecked tasks representing the migration steps.
 
@@ -72,14 +72,14 @@ Before starting the translation, ensure your Google Cloud environment is properl
   | :--- | :--- | :--- |
   | `--input` | *(Required)* | Local directory containing source Snowflake dbt `.sql` and `.yml` files. |
   | `--output` | *(Required)* | Target directory for translated BigQuery dbt `.sql` and `.yml` files. |
-  | `--bucket` | *(Required)* | GCS bucket name used to stage translation inputs and outputs. |
-  | `--location` | `us` | GCP region for BigQuery Translation Service execution (e.g., `us`, `eu`). |
+  | `--bucket` | *(Required)* | Cloud Storage bucket name used to stage translation inputs and outputs. |
+  | `--location` | `us` | Google Cloud region for BigQuery Translation Service execution (e.g., `us`, `eu`). |
   | `--metadata` | `None` | Optional path to a directory or `.zip` archive containing source `tables.csv` and `columns.csv`. |
   | `--array-cast-mode` | `array_string` | Target conversion for BQMS `ARRAY<JSON>` casts. Use `array_string` (`ARRAY<STRING>`) by default; use `string` (`STRING`), `json_extract_string_array`, or `preserve` as escape hatches when required by the source table schema. |
   | `--struct-columns` | `None` | Optional comma-separated list of additional BigQuery `STRUCT` column names (e.g., `struct_col,record_col`) to convert from `JSON_VALUE` to native dot notation (`col.field`). |
 
   The migration tools bundled in `scripts/` perform the following coordinated actions:
-  - `scripts/bulk_translate_via_gcloud.py`: Orchestrates end-to-end bulk migration, automating pre-processing, GCS upload, BigQuery Translation Service invocation, download, post-processing, and YAML configuration copying.
+  - `scripts/bulk_translate_via_gcloud.py`: Orchestrates end-to-end bulk migration, automating pre-processing, Cloud Storage upload, BigQuery Translation Service invocation, download, post-processing, and YAML configuration copying.
   - `scripts/dbt_translator.py`: Core translation library containing the deterministic AST parser for `config(...)`, Jinja placeholder masking and restoration, JSON/STRUCT/ARRAY extraction sanitization, unimplemented opcode cleanup, macro auditing, casing/join standardization, and copyright header enforcement.
 
 - **Detailed Translation Lifecycle (Executed by Scripts)**:
@@ -90,15 +90,15 @@ Before starting the translation, ensure your Google Cloud environment is properl
         * Replace `{{ ref('model_name') }}` with `_DBT_REF_model_name_`
       - Normalize Snowflake bracket notation (`col['prop']` -> `col:prop`), `::variant:field`, and Jinja `{% else %}` / loop `UNION ALL` branches, eliminating Jinja curly braces (`{{ ... }}`) prior to translation so the transpiler processes 100% valid Snowflake dialect SQL.
   2.  **Isolate the SQL Files**:
-      - Save these pre-processed, Jinja-free files to a staging input directory ready for GCS upload.
+      - Save these pre-processed, Jinja-free files to a staging input directory ready for Cloud Storage upload.
   3.  **Pre-Process Metadata & Translate SQL via BigQuery Translation Service**:
-      - If a metadata path is provided, map table entries matching discovered dbt models/sources to their placeholder names in `columns.csv` and `tables.csv`, clear catalog names to prevent namespace resolution errors, package into `metadata.zip`, and upload to GCS.
-      - Upload staging SQL files to GCS:
+      - If a metadata path is provided, map table entries matching discovered dbt models/sources to their placeholder names in `columns.csv` and `tables.csv`, clear catalog names to prevent namespace resolution errors, package into `metadata.zip`, and upload to Cloud Storage.
+      - Upload staging SQL files to Cloud Storage:
         `gcloud storage cp <staging_input_dir>/*.sql gs://[YOUR_BUCKET]/migration_input/`
       - Create `migration_config.yaml` specifying `snowflakeDialect` as source and `bigqueryDialect` as target (with `schemaPath` pointing to `metadata.zip` if provided).
       - Trigger translation workflow:
         `gcloud bq migration-workflows create --location=<region> --config-file=migration_config.yaml --no-async`
-      - Download translated GoogleSQL files from GCS:
+      - Download translated GoogleSQL files from Cloud Storage:
         `gcloud storage cp gs://[YOUR_BUCKET]/migration_output/*.sql <translated_output_dir>/`
   4.  **Restore Placeholders & Re-Embed dbt Logic**:
       - Take the translated BigQuery SQL files and perform advanced post-processing:

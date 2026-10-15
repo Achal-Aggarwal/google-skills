@@ -156,6 +156,7 @@ If `npx` is not available in your environment, install
   - [**Google Cloud Well-Architected Framework skill for the Security pillar**](./skills/cloud/google-cloud-waf-security)
   - [**Google Cloud Well-Architected Framework skill for the Sustainability pillar**](./skills/cloud/google-cloud-waf-sustainability)
 - **Security and identity**
+  - [**API Gateway Backend Security and Rate Limiting**](./skills/cloud/api-gateway-backend-security-and-rate-limiting)
   - [**Compliance Environment Assessor Skill**](./skills/cloud/assuredworkloads-environment-assessor)
   - [**DPoP Adoption & Identity Security Architecture**](./skills/identity/dpop-adoption)
   - [**GKE Platform Security**](./skills/cloud/gke-platform-security)

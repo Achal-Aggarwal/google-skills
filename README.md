@@ -133,6 +133,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Google Cloud Database Onboarding Skill**](./skills/cloud/cloud-databases-onboarding)
   - [**Managed Service for Apache Airflow (formerly Cloud Composer) DAG troubleshooting guide**](./skills/cloud/managed-airflow-dag-troubleshooting)
   - [**Managed Service for Apache Airflow (formerly Cloud Composer) Migration Guide**](./skills/cloud/managed-airflow-migrations)
+  - [**Managed Service for Apache Airflow (formerly Cloud Composer) recommendations**](./skills/cloud/managed-airflow-recommendations)
   - [**Spanner Basics**](./skills/cloud/spanner-basics)
 - **Developer tools**
   - [**Cloud Build Basics**](./skills/cloud/cloud-build-basics)

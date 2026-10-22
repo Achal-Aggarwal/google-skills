@@ -76,6 +76,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Troubleshoot GKE TPU multi-slice hangs with the MXLA Hang Analyzer**](./skills/cloud/gke-ai-troubleshooting-tpu-mxla-hang)
   - [**Troubleshoot GKE TPU performance degradation with ML Diagnostics Workload Monitoring**](./skills/cloud/gke-ai-troubleshooting-tpu-performance-degradation)
 - **Infrastructure**
+  - [**Cloud Network Insights**](./skills/cloud/cloud-network-insights)
   - [**Cloud Storage Basics**](./skills/cloud/google-cloud-storage-basics)
   - [**Cloud Storage Bucket Architect**](./skills/cloud/google-cloud-storage-bucket-architect)
   - [**Cloud Storage FUSE**](./skills/cloud/google-cloud-storage-fuse)

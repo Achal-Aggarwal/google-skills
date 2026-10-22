@@ -125,6 +125,7 @@ This command gives you an option to also remove obsolete skills.
   - [**BigQuery Observability**](./skills/cloud/bigquery-observability)
   - [**BigQuery Optimization Workflow**](./skills/cloud/bigquery-optimization)
   - [**BigQuery Troubleshooting**](./skills/cloud/bigquery-troubleshooting)
+  - [**BigQuery User-Defined Functions (UDFs)**](./skills/cloud/bigquery-udfs)
   - [**Bigtable Basics**](./skills/cloud/bigtable-basics)
   - [**Cloud SQL Basics**](./skills/cloud/cloud-sql-basics)
   - [**Data Lineage Summary**](./skills/cloud/datalineage-summary)

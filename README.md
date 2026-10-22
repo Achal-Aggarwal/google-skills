@@ -146,6 +146,7 @@ This command gives you an option to also remove obsolete skills.
 - **Application development**
   - [**Migrate Legacy Codebases to Safe Rust**](./skills/developers/migrate-to-rust)
 - **Management tools**
+  - [**Cloud Logging Finops**](./skills/cloud/cloud-logging-finops)
   - [**Cloud Monitoring Chart Generation Skill (`cloud-monitoring-chart-generation`)**](./skills/cloud/cloud-monitoring-chart-generation)
   - [**Cloud Monitoring ListTimeSeries Request Generator**](./skills/cloud/cloud-monitoring-list-time-series-request)
   - [**Cloud Monitoring Notification Channels Configuration**](./skills/cloud/cloud-monitoring-notification-channels-configuration)

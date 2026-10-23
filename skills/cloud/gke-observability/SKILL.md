@@ -9,7 +9,7 @@ description: >-
   monitoring permission errors. Don't use to configure local application logging
   frameworks or external APMs outside GKE.
 metadata:
-  version: "1.1.4"
+  version: "1.1.5"
   category: CloudObservabilityAndMonitoring
 ---
 
@@ -197,6 +197,33 @@ gcloud container clusters describe <CLUSTER_NAME> --region <REGION> \
   --format="yaml(loggingConfig)" \
   --quiet
 ```
+
+### Identifying Heavy API Server Clients from HTTP Access Logs
+
+To identify which clients are generating the most load on `kube-apiserver`,
+analyze the `httplog.go` HTTP access entries in `apiserver` component logs (an
+**optional feature that must be explicitly enabled** via
+`--logging=SYSTEM,WORKLOADS,API_SERVER`; always state this and link to
+https://docs.cloud.google.com/kubernetes-engine/docs/how-to/view-logs#control_plane_logs):
+
+1.  **Very stable `httplog.go` log structure (always mention this stability and
+    show an example log line)**: Explicitly advise the user that the structure
+    of `kube-apiserver` `httplog.go` logs is **very stable** across Kubernetes
+    releases (making regex extraction and Log Analytics queries reliable), and
+    include this example log line:
+    ```text
+    I1015 11:36:56.835535      10 httplog.go:137] "HTTP" verb="GET" URI="/api/v1/namespaces/default/pods" latency="7.374935s" userAgent="my-controller/v1.0.0 (linux/amd64)" audit-ID="b23db1f5-de18-4aa3-b506-46de0ed25e75" srcIP="10.128.0.27:52972" apf_pl="workload-low" apf_fs="everybody" apf_iseats=1 apf_fseats=0 apf_additionalLatency="0s" apf_execution_time="7.374765s" resp=200
+    ```
+2.  **Key fields for client load analysis**:
+    -   **`user_agent`** (`userAgent` in raw log text): Identifies the client
+        binary, controller, or operator issuing the requests.
+    -   **`verb`**: Distinguishes expensive request types (such as cluster-wide
+        `LIST` or mutating `PATCH`/`UPDATE` calls) from lightweight `GET` calls.
+    -   **`apf_iseats`** (along with `apf_fseats` and `apf_execution_time`):
+        Reports the API Priority and Fairness (APF) initial concurrency seats
+        occupied by the request; weighting or summing `apf_iseats *
+        apf_execution_time` by `user_agent` and `verb` reveals which clients
+        consume the most API server concurrency capacity.
 
 ## Alerting
 

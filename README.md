@@ -145,6 +145,7 @@ This command gives you an option to also remove obsolete skills.
   - [**Google Agents CLI Onboarding**](./skills/cloud/google-agents-cli-onboarding)
   - [**Google Developer Knowledge**](./skills/developers/retrieving-developer-knowledge)
 - **Application development**
+  - [**Application Integration Troubleshooting**](./skills/cloud/application-integration-troubleshooting)
   - [**Migrate Legacy Codebases to Safe Rust**](./skills/developers/migrate-to-rust)
 - **Management tools**
   - [**Cloud Logging Finops**](./skills/cloud/cloud-logging-finops)

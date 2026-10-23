@@ -9,7 +9,7 @@ description: >-
   monitoring permission errors. Don't use to configure local application logging
   frameworks or external APMs outside GKE.
 metadata:
-  version: "1.1.3"
+  version: "1.1.4"
   category: CloudObservabilityAndMonitoring
 ---
 
@@ -70,6 +70,16 @@ https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metric
     storage bytes in etcd, complementing object counts
     (`apiserver_storage_objects`) and total database size
     (`apiserver_storage_size_bytes`).
+-   **Admission webhook latency and timeouts
+    (`apiserver_admission_webhook_admission_duration_seconds`)**: When API calls
+    time out or fail and mutating or validating admission webhooks are
+    suspected, query the opt-in GMP metric
+    `apiserver_admission_webhook_admission_duration_seconds` (grouped by `name`,
+    `type`, `operation`, and `rejected`) to pinpoint slow or failing webhooks;
+    also inspect `ValidatingWebhookConfiguration` /
+    `MutatingWebhookConfiguration` `timeoutSeconds`, `failurePolicy`,
+    `namespaceSelector` exclusions (such as `kube-system`), and backing webhook
+    Service/Pod health.
 
 ## Enabling Full Monitoring
 

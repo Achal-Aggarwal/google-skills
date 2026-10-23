@@ -9,7 +9,7 @@ description: >-
   monitoring permission errors. Don't use to configure local application logging
   frameworks or external APMs outside GKE.
 metadata:
-  version: "1.1.1"
+  version: "1.1.2"
   category: CloudObservabilityAndMonitoring
 ---
 
@@ -209,6 +209,39 @@ A comprehensive assessment of node health relies on analyzing these two metrics 
 
 1.  **`kubernetes.io/node/status_condition`** (filtered by `status_condition="Ready"`): Use this to track healthy nodes. Note that it will only report values for nodes that have successfully bootstrapped.
 2.  **`compute.googleapis.com/instance_group/size`** (filtered by `instance_group_name="gke-<cluster_name>-.*"`): Use this to track the total number of nodes in a specific cluster. Note that it does not differentiate between healthy and unhealthy nodes.
+
+### Control Plane Health (Production Rules)
+
+To check whether Google considers a GKE cluster's control plane healthy, use the
+**`kubernetes.io/cluster/kcp_healthchecks`** system metric (on the `k8s_cluster`
+monitored resource, included in the default `SYSTEM` metrics package):
+
+1.  **Metric semantics**: `kubernetes.io/cluster/kcp_healthchecks` is an
+    incremental (`DELTA` / `CUMULATIVE` counter) metric sampled every 60 seconds
+    that counts Google-internal control plane probes, labeled by boolean
+    `success` (`"true"` or `"false"`).
+2.  **Charting health ratio**: Because the metric is an incremental counter
+    rather than a boolean gauge, chart control plane availability by dividing
+    the rate of successful checks (`success="true"`) by the overall rate of
+    checks across all `success` values:
+
+```promql
+sum by (project_id, location, cluster_name) (
+  rate(
+    kubernetes_io:cluster_kcp_healthchecks{
+      monitored_resource="k8s_cluster", success="true"
+    }[5m]
+  )
+)
+/
+sum by (project_id, location, cluster_name) (
+  rate(
+    kubernetes_io:cluster_kcp_healthchecks{
+      monitored_resource="k8s_cluster"
+    }[5m]
+  )
+)
+```
 
 ## Cost Considerations
 

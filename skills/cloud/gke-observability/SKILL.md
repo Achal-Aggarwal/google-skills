@@ -9,7 +9,7 @@ description: >-
   monitoring permission errors. Don't use to configure local application logging
   frameworks or external APMs outside GKE.
 metadata:
-  version: "1.1.2"
+  version: "1.1.3"
   category: CloudObservabilityAndMonitoring
 ---
 
@@ -56,6 +56,20 @@ default clusters:
 
 These are critical for diagnosing cluster-level issues (slow API responses,
 scheduling delays, stuck controllers).
+
+When recommending any control-plane metric below, always state that it is a
+Managed Service for Prometheus (GMP) metric that requires explicit enabling
+(`--monitoring=SYSTEM,API_SERVER,...` and `--enable-managed-prometheus`) and
+link to
+https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metrics:
+
+-   **API storage utilization by resource
+    (`apiserver_resource_size_estimate_bytes`)**: Use
+    `apiserver_resource_size_estimate_bytes` (grouped by `group` and `resource`)
+    to identify which Kubernetes resource types consume the most API server
+    storage bytes in etcd, complementing object counts
+    (`apiserver_storage_objects`) and total database size
+    (`apiserver_storage_size_bytes`).
 
 ## Enabling Full Monitoring
 

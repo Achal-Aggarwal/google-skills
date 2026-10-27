@@ -9,7 +9,7 @@ description: >-
   monitoring permission errors. Don't use to configure local application logging
   frameworks or external APMs outside GKE.
 metadata:
-  version: "1.1.6"
+  version: "1.1.7"
   category: CloudObservabilityAndMonitoring
 ---
 
@@ -70,7 +70,7 @@ https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metric
     storage bytes in etcd, complementing object counts
     (`apiserver_storage_objects`) and total database size
     (`apiserver_storage_size_bytes`).
--   **Admission webhook latency and timeouts
+-   **Admission webhook latency, timeouts, and control-plane recommendations
     (`apiserver_admission_webhook_admission_duration_seconds`)**: When API calls
     time out or fail and mutating or validating admission webhooks are
     suspected, query the opt-in GMP metric
@@ -79,7 +79,31 @@ https://docs.cloud.google.com/kubernetes-engine/docs/how-to/control-plane-metric
     also inspect `ValidatingWebhookConfiguration` /
     `MutatingWebhookConfiguration` `timeoutSeconds`, `failurePolicy`,
     `namespaceSelector` exclusions (such as `kube-system`), and backing webhook
-    Service/Pod health.
+    Service/Pod health. Strongly warn users against ignoring GKE control-plane
+    recommendations about optimizing admission webhooks or CRDs with an invalid
+    `caBundle` because unoptimized webhooks and invalid CRD `caBundle`
+    configurations can overload or destabilize the GKE control plane, and always
+    link to
+    https://docs.cloud.google.com/kubernetes-engine/docs/how-to/optimize-webhooks.md.txt
+    and
+    https://docs.cloud.google.com/kubernetes-engine/docs/how-to/crd-with-invalid-caBundle.md.txt.
+-   **Watch activity and watch storms (`apiserver_longrunning_requests`,
+    `apiserver_watch_events_total`, `apiserver_watch_events_sizes`)**: When a
+    misconfigured agent or DaemonSet is suspected of causing a watch storm or
+    repeatedly re-establishing broken watches, check the GMP metrics
+    `apiserver_longrunning_requests` (filtered by `verb="WATCH"`, grouped by
+    `group`, `resource`, `scope`) for active concurrent watchers,
+    `apiserver_watch_events_total` (grouped by `group`, `kind`, `version`) for
+    watch event volume and rate, and `apiserver_watch_events_sizes` for watch
+    event payload sizes.
+-   **Pod and object churn (`scheduler_schedule_attempts_total`,
+    `scheduler_scheduling_attempt_duration_seconds`, and mutating
+    `apiserver_request_total`)**: When batch job bursts or controller loops
+    leave newly created pods stuck in `Pending`, make `kubectl` commands
+    sluggish, or cause controller reconciliations to lag, measure pod and object
+    churn by checking `scheduler_schedule_attempts_total` (and
+    `scheduler_scheduling_attempt_duration_seconds`) alongside mutating
+    `apiserver_request_total` (`CREATE`, `DELETE`, `PATCH`, `UPDATE`).
 
 ## Enabling Full Monitoring
 
@@ -186,6 +210,25 @@ gcloud logging read \
   --project <PROJECT_ID> --limit 50 \
   --quiet
 ```
+
+-   **Hot-object write contention and `409 Conflict` storms**: When frequent
+    `409 Conflict` errors and high API server load suggest runaway controllers
+    are fighting over or excessively patching a single Kubernetes object, query
+    GKE Cloud Audit Logs (`cloudaudit.googleapis.com/activity`) grouped by
+    `protoPayload.resourceName` and `protoPayload.methodName` (`update` or
+    `patch`) to identify the specific object being hammered, and check
+    `protoPayload.authenticationInfo.principalEmail` or
+    `protoPayload.requestMetadata.callerSuppliedUserAgent` (or `kube-apiserver`
+    component logs) to identify the responsible controller.
+-   **End-to-end pod startup lifecycle timeline**: To determine whether a
+    slow-starting pod was delayed during controller creation, scheduling,
+    `kubelet` pickup, or container startup, reconstruct its timeline in Cloud
+    Logging by correlating Kubernetes Events (`resource.type="k8s_pod"` or
+    `k8s_event`) with Cloud Audit Logs (`cloudaudit.googleapis.com/activity`),
+    optional control-plane component logs (`kube-scheduler`,
+    `kube-controller-manager`, and `kube-apiserver` under
+    `resource.type="k8s_control_plane_component"`), and node `kubelet` logs
+    (`resource.type="k8s_node"`).
 
 ## Diagnostic Settings
 

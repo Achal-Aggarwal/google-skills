@@ -1,7 +1,11 @@
 # Output settings
 no_progress = true
 verbose = "error"
-accept = ["200", "302", "403", "503"]
+accept = ["200", "302", "403", "429", "503"]
+
+# Retry settings to prevent transient rate-limit or network false positives
+max_retries = 3
+retry_wait_time = 2
 
 exclude_path = [
     "README\\.md$",
